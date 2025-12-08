@@ -6,15 +6,15 @@ import (
 )
 
 type Provider interface {
-	Send(ctx context.Context,params SendParams) <- chan types.StreamEvent
+	Send(ctx context.Context, params SendParams) <-chan types.StreamEvent
 	Models() []string
 	Model() string
-	SetModel(index int) 
+	SetModel(index int)
 }
 
 type SendParams struct {
-	Messages []types.Message
-	Tool types.Tool
+	Messages     []types.Message
+	Tool         types.Tool
 	SystemPrompt string
-	MaxTokens int 
+	MaxTokens    int
 }

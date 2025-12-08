@@ -14,34 +14,34 @@ var _ provider.Provider = (*Anthropic)(nil)
 
 type Anthropic struct {
 	client anthropic.Client
-	model int
-	datas []ModelData
+	model  int
+	datas  []ModelData
 }
 
 type ModelData struct {
 	Name string
-	Id string
+	Id   string
 }
 
 func New(auth auth.Auth) *Anthropic {
-	auth.Update()
+	auth.Update(context.Background())
 	client := anthropic.NewClient(option.WithAPIKey(auth.Key()))
 	return &Anthropic{
-		client : client,
-		model: 0,
+		client: client,
+		model:  0,
 	}
 }
 
 func (instance *Anthropic) getModelsData() error {
-	models , err := instance.client.Models.List(context.Background(),anthropic.ModelListParams{})
+	models, err := instance.client.Models.List(context.Background(), anthropic.ModelListParams{})
 	if err != nil {
 		return err
 	}
-	instance.datas = make([]ModelData,len(models.Data))
-	for i , model := range models.Data {
-		instance.datas[i] = ModelData{ 
+	instance.datas = make([]ModelData, len(models.Data))
+	for i, model := range models.Data {
+		instance.datas[i] = ModelData{
 			Name: model.DisplayName,
-			Id: model.ID,
+			Id:   model.ID,
 		}
 	}
 	return nil
@@ -54,7 +54,7 @@ func (instance *Anthropic) Models() []string {
 			instance.getModelsData()
 		}
 	}
-	names := make([]string,len(instance.datas)) 
+	names := make([]string, len(instance.datas))
 	for i := range len(instance.datas) {
 		names[i] = instance.datas[i].Name
 	}
@@ -72,7 +72,7 @@ func (instance *Anthropic) SetModel(index int) {
 	instance.model = index
 }
 
-func (instance *Anthropic) Send(ctx context.Context,params provider.SendParams) <- chan types.StreamEvent {
+func (instance *Anthropic) Send(ctx context.Context, params provider.SendParams) <-chan types.StreamEvent {
 	eventChan := make(chan types.StreamEvent)
 	stream(
 		ctx,
@@ -83,4 +83,3 @@ func (instance *Anthropic) Send(ctx context.Context,params provider.SendParams) 
 	)
 	return eventChan
 }
-

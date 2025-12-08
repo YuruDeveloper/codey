@@ -1,19 +1,19 @@
 package types
 
-type Role int  
+type Role int
 
 const (
-	UserRole = Role(iota) 
-	AssistantRole 
-	ToolRole 
+	UserRole = Role(iota)
+	AssistantRole
+	ToolRole
 	AlarmRole
 )
 
-type PartType int 
+type PartType int
 
 const (
 	PartTypeText PartType = PartType(iota)
-	PartTypeImage 
+	PartTypeImage
 	PartTypeTool
 	PartTypeToolResult
 )
@@ -23,20 +23,20 @@ type Part interface {
 }
 
 type TextPart struct {
-	Text string 
+	Text string
 }
 
 func (TextPart) GetType() PartType { return PartTypeText }
 
 type ImagePart struct {
 	MediaType string
-	Data string
+	Data      string
 }
 
 func (ImagePart) GetType() PartType { return PartTypeImage }
 
 type ToolUsePart struct {
-	ID string
+	ID    string
 	Input map[string]string
 }
 
@@ -44,24 +44,24 @@ func (ToolUsePart) GetType() PartType { return PartTypeTool }
 
 type ToolResultPart struct {
 	ToolUseID string
-	Content string
-	IsError bool
+	Content   string
+	IsError   bool
 }
 
 func (ToolResultPart) GetType() PartType { return PartTypeToolResult }
 
 type Message struct {
-	Role Role
+	Role  Role
 	Parts []Part
 }
 
 type Tool struct {
-	Name string
+	Name        string
 	Description string
-	InputSchema map[string]string
+	InputSchema map[string]any
 }
 
-type EventType int 
+type EventType int
 
 const (
 	EventTypeTextDelta = EventType(iota)
@@ -80,6 +80,6 @@ type StreamEvent struct {
 	ToolUseID string
 	ToolInput string
 
-	Error error
+	Error      error
 	StopReason string
 }
