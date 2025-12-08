@@ -57,5 +57,8 @@ go.work
 # End of https://www.toptal.com/developers/gitignore/api/linux,go,git
 
 CLAUDE.md
-
+GEMINI.md
 md
+temp
+.claude
+bin
