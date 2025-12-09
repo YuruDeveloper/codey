@@ -2,6 +2,7 @@ package anthropic
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/YuruDeveloper/codey/internal/auth"
 	"github.com/YuruDeveloper/codey/internal/provider"
@@ -32,10 +33,10 @@ func New(auth auth.Auth) *Anthropic {
 	}
 }
 
-func (instance *Anthropic) getModelsData() error {
+func (instance *Anthropic) getModelsData()  {
 	models, err := instance.client.Models.List(context.Background(), anthropic.ModelListParams{})
 	if err != nil {
-		return err
+		return
 	}
 	instance.datas = make([]ModelData, len(models.Data))
 	for i, model := range models.Data {
@@ -44,19 +45,15 @@ func (instance *Anthropic) getModelsData() error {
 			Id:   model.ID,
 		}
 	}
-	return nil
 }
 
 func (instance *Anthropic) Models() []string {
 	if instance.datas == nil {
-		err := instance.getModelsData()
-		if err != nil {
-			instance.getModelsData()
-		}
+		instance.getModelsData()
 	}
 	names := make([]string, len(instance.datas))
 	for i := range len(instance.datas) {
-		names[i] = instance.datas[i].Name
+		names[i] = fmt.Sprintf("%s, %s",instance.datas[i].Name,instance.datas[i].Id)  
 	}
 	return names
 }
@@ -66,6 +63,7 @@ func (instance *Anthropic) Model() string {
 		return ""
 	}
 	return instance.datas[instance.model].Name
+	
 }
 
 func (instance *Anthropic) SetModel(index int) {

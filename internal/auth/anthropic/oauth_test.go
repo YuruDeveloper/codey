@@ -172,3 +172,97 @@ func TestOAuthAuth_Update(t *testing.T) {
 		}
 	})
 }
+
+func TestOAuthAuth_ExchangeToken(t *testing.T) {
+	t.Run("Successful exchange", func(t *testing.T) {
+		// 1. Setup: Mock server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != "POST" {
+				t.Errorf("Expected POST method, got %s", r.Method)
+			}
+			
+			var payload map[string]string
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("Failed to decode request body: %v", err)
+			}
+
+			if payload["grant_type"] != "authorization_code" {
+				t.Error("Missing or wrong grant_type")
+			}
+			if payload["code"] != "test-code" { // The split code
+				t.Error("Missing or wrong code")
+			}
+			if payload["code_verifier"] != "test-verifier" {
+				t.Error("Missing or wrong verifier")
+			}
+			if payload["state"] != "test-state" { // The split state
+				t.Error("Missing or wrong state")
+			}
+			
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"access_token":  "exchanged-access-token",
+				"refresh_token": "exchanged-refresh-token",
+				"expires_in":    3600,
+			})
+		}))
+		defer server.Close()
+
+		// 2. Setup: Auth object and context with mock client
+		oauthAuth := &OAuthAuth{
+			// Initialize token with a dummy value to see if it gets updated
+			token: &oauth2.Token{AccessToken: "old-token"},
+			oauth2Config: &oauth2.Config{
+				ClientID: ClientID,
+				Endpoint: oauth2.Endpoint{
+					TokenURL: server.URL, // Point to mock server
+				},
+				RedirectURL: "https://console.anthropic.com/oauth/code/callback",
+			},
+		}
+		
+		ctx := context.WithValue(context.Background(), oauth2.HTTPClient, server.Client())
+
+		// 3. Execute
+		// Call with the concatenated "code#state" string
+		oauthAuth.ExchangeToken(ctx, "test-code#test-state", "test-verifier")
+
+		// 4. Assert
+		if oauthAuth.Key() != "exchanged-access-token" {
+			t.Errorf("Expected access token 'exchanged-access-token', got '%s'", oauthAuth.Key())
+		}
+		if oauthAuth.token.RefreshToken != "exchanged-refresh-token" {
+			t.Errorf("Expected refresh token 'exchanged-refresh-token', got '%s'", oauthAuth.token.RefreshToken)
+		}
+	})
+
+	t.Run("Failed exchange - server error", func(t *testing.T) {
+		// 1. Setup: Mock server responds with error
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+		}))
+		defer server.Close()
+
+		// 2. Setup: Auth object and context with mock client
+		oauthAuth := &OAuthAuth{
+			token: &oauth2.Token{AccessToken: "old-token"},
+			oauth2Config: &oauth2.Config{
+				ClientID: ClientID,
+				Endpoint: oauth2.Endpoint{
+					TokenURL: server.URL, // Point to mock server
+				},
+			},
+		}
+		ctx := context.WithValue(context.Background(), oauth2.HTTPClient, server.Client())
+
+		// 3. Execute
+		oauthAuth.ExchangeToken(ctx, "bad-code#bad-state", "bad-verifier")
+
+		// 4. Assert
+		// Since the function doesn't return an error, we check if the token was NOT updated.
+		if oauthAuth.Key() != "old-token" {
+			t.Error("Token should not have been updated on failure")
+		}
+	})
+}

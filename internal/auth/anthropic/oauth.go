@@ -1,8 +1,11 @@
 package anthropicAuth
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/YuruDeveloper/codey/internal/auth"
@@ -76,4 +79,67 @@ func (instance *OAuthAuth) Save(config *config.Config) {
 	})
 	config.SetProviderAuth(name, data)
 	config.Save()
+}
+
+
+func (instance *OAuthAuth) ExchangeToken(ctx context.Context, code string, verifier string) {
+	parts := strings.Split(code,"#")
+	if len(parts) != 2 {
+		return 
+	}
+
+	codeValue := parts[0]
+	stateValue := parts[1]
+
+	payload := map[string]string {
+		"grant_type" : "authorization_code",
+		"code" : codeValue,
+		"state" : stateValue,
+		"client_id" : ClientID,
+		"redirect_uri":  "https://console.anthropic.com/oauth/code/callback",
+		"code_verifier": verifier,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+    if err != nil {
+        return 
+    }
+
+	request , err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		instance.oauth2Config.Endpoint.TokenURL,
+        bytes.NewReader(payloadBytes),
+	)
+	if err != nil {
+		return
+	}
+	 client := http.DefaultClient
+	if c, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
+		client = c
+	} 
+	responce , err := client.Do(request)
+	if err != nil {
+		return
+	}
+	defer responce.Body.Close()
+
+	if responce.StatusCode != http.StatusOK {
+		return
+	}
+
+	var result struct {
+		AccessToken  string `json:"access_token"`  
+        RefreshToken string `json:"refresh_token"`  
+        ExpiresIn    int64  `json:"expires_in"`    
+        TokenType    string `json:"token_type"`     
+	}
+
+	if err := json.NewDecoder(responce.Body).Decode(&result) ; err != nil {
+		return
+	}
+
+	instance.token.AccessToken = result.AccessToken
+	instance.token.RefreshToken = result.RefreshToken
+	instance.token.Expiry = time.Unix(result.ExpiresIn,0)
 }
