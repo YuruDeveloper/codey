@@ -36,6 +36,11 @@ func New(auth auth.Auth) *Anthropic {
 func (instance *Anthropic) getModelsData()  {
 	models, err := instance.client.Models.List(context.Background(), anthropic.ModelListParams{})
 	if err != nil {
+		instance.datas = []ModelData{
+			{ Name: "haiku4.5", Id: "claude-haiku-4-5-20251001"},
+			{ Name: "sonet4.5", Id: "claude-sonnet-4-5-20250929"},
+			{ Name: "opus4.5", Id :  "claude-opus-4-5-20251101" },
+		}
 		return
 	}
 	instance.datas = make([]ModelData, len(models.Data))
