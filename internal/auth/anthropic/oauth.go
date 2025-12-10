@@ -10,10 +10,12 @@ import (
 
 	"github.com/YuruDeveloper/codey/internal/auth"
 	"github.com/YuruDeveloper/codey/internal/config"
+	appError "github.com/YuruDeveloper/codey/internal/error"
 	"golang.org/x/oauth2"
 )
 
 var _ auth.Auth = (*OAuthAuth)(nil)
+var _ auth.DynamicAuth = (*OAuthAuth)(nil)
 
 const ClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 
@@ -22,11 +24,16 @@ type OAuthAuth struct {
 	oauth2Config *oauth2.Config
 }
 
-func NewOAuthAuth(config *config.Config) *OAuthAuth {
+func NewOAuthAuth(config config.AppConfig) (*OAuthAuth, error) {
 	data := config.GetProviderAuth(name)
 	var auth AuthData
-	json.Unmarshal(data, &auth)
-
+	if data == nil {
+		return nil , appError.NewValidError(appError.FailLoadJsonData,"Fail Make oauth auth")
+	}
+	err :=  json.Unmarshal(data, &auth)
+	if err != nil {
+		return nil , appError.NewError(appError.JsonUnMarshalError,err)
+	}
 	token := &oauth2.Token{
 		AccessToken:  auth.Access,
 		RefreshToken: auth.Refresh,
@@ -50,42 +57,46 @@ func NewOAuthAuth(config *config.Config) *OAuthAuth {
 	return &OAuthAuth{
 		token:        token,
 		oauth2Config: oauth2Config,
-	}
+	} , nil
 }
 
 func (instance *OAuthAuth) Key() string {
 	return instance.token.AccessToken
 }
 
-func (instance *OAuthAuth) Update(ctx context.Context) {
+func (instance *OAuthAuth) Update(ctx context.Context) error {
 	if instance.token.Valid() {
-		return
+		return nil
 	}
 
 	tokenSource := instance.oauth2Config.TokenSource(ctx, instance.token)
 	newToken, err := tokenSource.Token()
 	if err != nil {
-		return
+		return appError.NewError(appError.FailRefreshToken,err)
 	}
 	instance.token = newToken
+	return nil
 }
 
-func (instance *OAuthAuth) Save(config *config.Config) {
-	data, _ := json.Marshal(AuthData{
+func (instance *OAuthAuth) Save(config config.AppConfig) error{
+	data, err := json.Marshal(AuthData{
 		Type:    OAuth,
 		Refresh: instance.token.RefreshToken,
 		Access:  instance.token.AccessToken,
 		Expires: instance.token.Expiry.Unix(),
 	})
+	if err != nil {
+		return appError.NewError(appError.JsonMarshalError,err)
+	}
 	config.SetProviderAuth(name, data)
-	config.Save()
+	return config.Save()
 }
 
 
-func (instance *OAuthAuth) ExchangeToken(ctx context.Context, code string, verifier string) {
+func (instance *OAuthAuth) ExchangeToken(ctx context.Context, code string, verifier string) error {
 	parts := strings.Split(code,"#")
 	if len(parts) != 2 {
-		return 
+		return appError.NewValidError(appError.UnexpectedCode,"Fail Exchange anthropic token")
 	}
 
 	codeValue := parts[0]
@@ -102,7 +113,7 @@ func (instance *OAuthAuth) ExchangeToken(ctx context.Context, code string, verif
 
 	payloadBytes, err := json.Marshal(payload)
     if err != nil {
-        return 
+        return appError.NewError(appError.JsonMarshalError,err)
     }
 
 	request , err := http.NewRequestWithContext(
@@ -112,20 +123,20 @@ func (instance *OAuthAuth) ExchangeToken(ctx context.Context, code string, verif
         bytes.NewReader(payloadBytes),
 	)
 	if err != nil {
-		return
+		return appError.NewError(appError.FailMakeRequest,err)
 	}
 	 client := http.DefaultClient
 	if c, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
 		client = c
 	} 
-	responce , err := client.Do(request)
+	response , err := client.Do(request)
 	if err != nil {
-		return
+		return appError.NewError(appError.FailGetResponse,err)
 	}
-	defer responce.Body.Close()
+	defer response.Body.Close()
 
-	if responce.StatusCode != http.StatusOK {
-		return
+	if response.StatusCode != http.StatusOK {
+		return appError.NewValidError(appError.HttpNotOK,"Fail http anthropic token")
 	}
 
 	var result struct {
@@ -135,11 +146,12 @@ func (instance *OAuthAuth) ExchangeToken(ctx context.Context, code string, verif
         TokenType    string `json:"token_type"`     
 	}
 
-	if err := json.NewDecoder(responce.Body).Decode(&result) ; err != nil {
-		return
+	if err := json.NewDecoder(response.Body).Decode(&result) ; err != nil {
+		return appError.NewError(appError.FailDecodeHttpBody,err)
 	}
 
 	instance.token.AccessToken = result.AccessToken
 	instance.token.RefreshToken = result.RefreshToken
-	instance.token.Expiry = time.Unix(result.ExpiresIn,0)
+	instance.token.Expiry = time.Now().Add(time.Duration(result.ExpiresIn) * time.Second)
+	return nil
 }

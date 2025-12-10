@@ -21,9 +21,12 @@ func TestNewApiKeyAuth(t *testing.T) {
 	cfg.SetProviderAuth(name, rawData) // 'name' is the constant "anthropic" from authData.go
 
 	// 2. Execute
-	apiKeyAuth := NewApiKeyAuth(cfg)
+	apiKeyAuth, err := NewApiKeyAuth(cfg)
 
 	// 3. Assert
+	if err != nil {
+		t.Fatalf("NewApiKeyAuth returned error: %v", err)
+	}
 	if apiKeyAuth == nil {
 		t.Fatal("NewApiKeyAuth returned nil")
 	}

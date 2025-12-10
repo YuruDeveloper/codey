@@ -7,7 +7,10 @@ import (
 )
 
 type Auth interface {
-	Update(ctx context.Context)
 	Key() string
-	Save(config *config.Config)
+	Save(config config.AppConfig) error
+}
+
+type DynamicAuth interface {
+	Update(ctx context.Context) error
 }

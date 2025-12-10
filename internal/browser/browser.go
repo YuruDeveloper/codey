@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+
+	appError "github.com/YuruDeveloper/codey/internal/error"
 )
 
 
@@ -14,22 +16,30 @@ func Browser(url string) error {
 		// WSL에서는 Windows의 rundll32를 사용하여 브라우저 열기
 		// 이 방법이 URL 특수문자를 가장 안전하게 처리함
 		cmd := exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", url)
-		return cmd.Start()
+		err := cmd.Start()
+		if err != nil {
+			return appError.NewError(appError.FailOpenBrowser,err)
+		}
+		return nil
 	}
 
 	// 일반 Linux/Mac/Windows
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "linux":
-		exec.Command("xdg-open", url)
+		cmd = exec.Command("xdg-open", url)
 	case "darwin":
-		exec.Command("open", url)
+		cmd = exec.Command("open", url)
 	case "windows":
-		exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
 	default:
-		return nil
+		return appError.NewValidError(appError.UnexpectedOS,"Fail open Browser")
 	}
-	return cmd.Start()
+	err := cmd.Start()
+	if err != nil {
+		return appError.NewError(appError.FailOpenBrowser,err)
+	}
+	return nil
 }
 
 // isWSL은 WSL 환경인지 확인합니다

@@ -31,9 +31,12 @@ func TestNewOAuthAuth(t *testing.T) {
 	cfg.SetProviderAuth(name, rawData) // 'name' is "anthropic"
 
 	// 2. Execute
-	oauthAuth := NewOAuthAuth(cfg)
+	oauthAuth, err := NewOAuthAuth(cfg)
 
 	// 3. Assert
+	if err != nil {
+		t.Fatalf("NewOAuthAuth returned error: %v", err)
+	}
 	if oauthAuth == nil {
 		t.Fatal("NewOAuthAuth returned nil")
 	}

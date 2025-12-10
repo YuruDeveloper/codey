@@ -2,6 +2,8 @@ package provider
 
 import (
 	"context"
+
+	"github.com/YuruDeveloper/codey/internal/auth"
 	"github.com/YuruDeveloper/codey/internal/types"
 )
 
@@ -10,6 +12,10 @@ type Provider interface {
 	Models() []string
 	Model() string
 	SetModel(index int)
+}
+
+type ClientProvider interface {
+	Reconnect(auth auth.Auth) error
 }
 
 type SendParams struct {

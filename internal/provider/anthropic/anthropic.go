@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/YuruDeveloper/codey/internal/auth"
+	appError "github.com/YuruDeveloper/codey/internal/error"
 	"github.com/YuruDeveloper/codey/internal/provider"
 	"github.com/YuruDeveloper/codey/internal/types"
 	"github.com/anthropics/anthropic-sdk-go"
@@ -12,6 +13,7 @@ import (
 )
 
 var _ provider.Provider = (*Anthropic)(nil)
+var _ provider.ClientProvider = (*Anthropic)(nil)
 
 type Anthropic struct {
 	client anthropic.Client
@@ -24,23 +26,48 @@ type ModelData struct {
 	Id   string
 }
 
-func New(auth auth.Auth) *Anthropic {
-	auth.Update(context.Background())
-	client := anthropic.NewClient(option.WithAPIKey(auth.Key()))
-	return &Anthropic{
+const (
+    ModelHaikuID   = "claude-haiku-4-5-20251001"
+    ModelSonnetID  = "claude-sonnet-4-5-20250929"
+    ModelOpusID    = "claude-opus-4-5-20251101"
+)
+
+var DefaultModels = []ModelData{
+    {Name: "haiku4.5", Id: ModelHaikuID},
+    {Name: "sonnet4.5", Id: ModelSonnetID},
+    {Name: "opus4.5", Id: ModelOpusID},
+}
+
+func New(key auth.Auth) (*Anthropic, error) {
+	if dynamic , ok := key.(auth.DynamicAuth) ; ok {
+		if err := dynamic.Update(context.Background()) ; err != nil {
+          	return nil, appError.NewError(appError.FailUpdateToken, err)	
+		}
+	}
+	client := anthropic.NewClient(option.WithAPIKey(key.Key()))
+	object := &Anthropic{
 		client: client,
 		model:  0,
 	}
+	object.getModelsData()
+	return object , nil
+}
+
+func (instance *Anthropic) Reconnect(key auth.Auth) error {
+	if dynamic , ok := key.(auth.DynamicAuth) ; ok {
+		if err := dynamic.Update(context.Background()) ; err != nil {
+      		return appError.NewError(appError.FailUpdateToken, err)
+		}	
+	}
+	instance.client = anthropic.NewClient(option.WithAPIKey(key.Key()))	
+	instance.getModelsData()
+	return nil
 }
 
 func (instance *Anthropic) getModelsData()  {
 	models, err := instance.client.Models.List(context.Background(), anthropic.ModelListParams{})
 	if err != nil {
-		instance.datas = []ModelData{
-			{ Name: "haiku4.5", Id: "claude-haiku-4-5-20251001"},
-			{ Name: "sonet4.5", Id: "claude-sonnet-4-5-20250929"},
-			{ Name: "opus4.5", Id :  "claude-opus-4-5-20251101" },
-		}
+		instance.datas = DefaultModels
 		return
 	}
 	instance.datas = make([]ModelData, len(models.Data))
@@ -72,6 +99,10 @@ func (instance *Anthropic) Model() string {
 }
 
 func (instance *Anthropic) SetModel(index int) {
+    if index < 0 || len(instance.datas) <= index {
+        instance.model = 0
+        return
+    }
 	instance.model = index
 }
 
