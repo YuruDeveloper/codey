@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/YuruDeveloper/codey/internal/auth"
 	appError "github.com/YuruDeveloper/codey/internal/error"
-	"github.com/YuruDeveloper/codey/internal/provider"
+	"github.com/YuruDeveloper/codey/internal/ports"
 	"github.com/YuruDeveloper/codey/internal/types"
+	
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
 )
 
-var _ provider.Provider = (*Anthropic)(nil)
-var _ provider.ClientProvider = (*Anthropic)(nil)
+var _ ports.Provider = (*Anthropic)(nil)
+var _ ports.ClientProvider = (*Anthropic)(nil)
 
 type Anthropic struct {
 	client anthropic.Client
@@ -38,8 +38,8 @@ var DefaultModels = []ModelData{
     {Name: "opus4.5", Id: ModelOpusID},
 }
 
-func New(key auth.Auth) (*Anthropic, error) {
-	if dynamic , ok := key.(auth.DynamicAuth) ; ok {
+func New(key ports.Auth) (*Anthropic, error) {
+	if dynamic , ok := key.(ports.DynamicAuth) ; ok {
 		if err := dynamic.Update(context.Background()) ; err != nil {
           	return nil, appError.NewError(appError.FailUpdateToken, err)	
 		}
@@ -53,8 +53,8 @@ func New(key auth.Auth) (*Anthropic, error) {
 	return object , nil
 }
 
-func (instance *Anthropic) Reconnect(key auth.Auth) error {
-	if dynamic , ok := key.(auth.DynamicAuth) ; ok {
+func (instance *Anthropic) Reconnect(key ports.Auth) error {
+	if dynamic , ok := key.(ports.DynamicAuth) ; ok {
 		if err := dynamic.Update(context.Background()) ; err != nil {
       		return appError.NewError(appError.FailUpdateToken, err)
 		}	
@@ -106,7 +106,7 @@ func (instance *Anthropic) SetModel(index int) {
 	instance.model = index
 }
 
-func (instance *Anthropic) Send(ctx context.Context, params provider.SendParams) <-chan types.StreamEvent {
+func (instance *Anthropic) Send(ctx context.Context, params types.SendParams) <-chan types.StreamEvent {
 	eventChan := make(chan types.StreamEvent)
 	stream(
 		ctx,

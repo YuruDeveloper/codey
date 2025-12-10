@@ -8,14 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/YuruDeveloper/codey/internal/auth"
-	"github.com/YuruDeveloper/codey/internal/config"
 	appError "github.com/YuruDeveloper/codey/internal/error"
+	"github.com/YuruDeveloper/codey/internal/ports"
 	"golang.org/x/oauth2"
 )
 
-var _ auth.Auth = (*OAuthAuth)(nil)
-var _ auth.DynamicAuth = (*OAuthAuth)(nil)
+var _ ports.Auth = (*OAuthAuth)(nil)
+var _ ports.DynamicAuth = (*OAuthAuth)(nil)
 
 const ClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 
@@ -24,16 +23,7 @@ type OAuthAuth struct {
 	oauth2Config *oauth2.Config
 }
 
-func NewOAuthAuth(config config.AppConfig) (*OAuthAuth, error) {
-	data := config.GetProviderAuth(name)
-	var auth AuthData
-	if data == nil {
-		return nil , appError.NewValidError(appError.FailLoadJsonData,"Fail Make oauth auth")
-	}
-	err :=  json.Unmarshal(data, &auth)
-	if err != nil {
-		return nil , appError.NewError(appError.JsonUnMarshalError,err)
-	}
+func NewOAuthAuth(auth AuthData) *OAuthAuth {
 	token := &oauth2.Token{
 		AccessToken:  auth.Access,
 		RefreshToken: auth.Refresh,
@@ -57,7 +47,7 @@ func NewOAuthAuth(config config.AppConfig) (*OAuthAuth, error) {
 	return &OAuthAuth{
 		token:        token,
 		oauth2Config: oauth2Config,
-	} , nil
+	} 
 }
 
 func (instance *OAuthAuth) Key() string {
@@ -78,7 +68,7 @@ func (instance *OAuthAuth) Update(ctx context.Context) error {
 	return nil
 }
 
-func (instance *OAuthAuth) Save(config config.AppConfig) error{
+func (instance *OAuthAuth) Save(config ports.AppConfig) error{
 	data, err := json.Marshal(AuthData{
 		Type:    OAuth,
 		Refresh: instance.token.RefreshToken,

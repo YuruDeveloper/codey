@@ -3,26 +3,16 @@ package anthropicAuth
 import (
 	"encoding/json"
 
-	"github.com/YuruDeveloper/codey/internal/auth"
-	"github.com/YuruDeveloper/codey/internal/config"
 	appError "github.com/YuruDeveloper/codey/internal/error"
+	"github.com/YuruDeveloper/codey/internal/ports"
 )
 
-var _ auth.Auth = (*ApiKeyAuth)(nil)
+var _ ports.Auth = (*ApiKeyAuth)(nil)
 
-func NewApiKeyAuth(config config.AppConfig) (*ApiKeyAuth , error) {
-	data := config.GetProviderAuth(name)
-	if data == nil {
-		return nil , appError.NewValidError(appError.FailLoadJsonData,"Fail Load anthropic api key data")
-	}
-	var auth AuthData
-	err := json.Unmarshal(data, &auth)
-	if err != nil {
-		return nil , appError.NewError(appError.JsonUnMarshalError,err)
-	}
+func NewApiKeyAuth(auth AuthData) *ApiKeyAuth {
 	return &ApiKeyAuth{
 		key: auth.Key,
-	} , nil
+	} 
 }
 
 type ApiKeyAuth struct {
@@ -37,7 +27,7 @@ func (instance *ApiKeyAuth) Key() string {
 	return instance.key
 }
 
-func (instance *ApiKeyAuth) Save(config config.AppConfig) error {
+func (instance *ApiKeyAuth) Save(config ports.AppConfig) error {
 	data, err := json.Marshal(AuthData{
 		Type: ApiKey,
 		Key:  instance.key,

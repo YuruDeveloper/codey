@@ -17,26 +17,17 @@ import (
 
 func TestNewOAuthAuth(t *testing.T) {
 	// 1. Setup
-	cfg := config.New()
 	authData := AuthData{
 		Type:    OAuth,
 		Access:  "test-access-token",
 		Refresh: "test-refresh-token",
 		Expires: time.Now().Add(1 * time.Hour).Unix(),
 	}
-	rawData, err := json.Marshal(authData)
-	if err != nil {
-		t.Fatalf("Failed to marshal auth data: %v", err)
-	}
-	cfg.SetProviderAuth(name, rawData) // 'name' is "anthropic"
 
 	// 2. Execute
-	oauthAuth, err := NewOAuthAuth(cfg)
+	oauthAuth := NewOAuthAuth(authData)
 
 	// 3. Assert
-	if err != nil {
-		t.Fatalf("NewOAuthAuth returned error: %v", err)
-	}
 	if oauthAuth == nil {
 		t.Fatal("NewOAuthAuth returned nil")
 	}

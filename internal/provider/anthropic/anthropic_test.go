@@ -4,13 +4,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/YuruDeveloper/codey/internal/provider"
 	"github.com/YuruDeveloper/codey/internal/types"
 	"github.com/anthropics/anthropic-sdk-go"
 )
 
 func TestInitStream_SimpleText(t *testing.T) {
-	sendParams := provider.SendParams{
+	sendParams := types.SendParams{
 		Messages: []types.Message{
 			{
 				Role: types.UserRole,
@@ -59,7 +58,7 @@ func TestInitStream_SimpleText(t *testing.T) {
 }
 
 func TestInitStream_ImageMessage(t *testing.T) {
-	sendParams := provider.SendParams{
+	sendParams := types.SendParams{
 		Messages: []types.Message{
 			{
 				Role: types.UserRole,
@@ -97,7 +96,7 @@ func TestInitStream_ImageMessage(t *testing.T) {
 }
 
 func TestInitStream_ToolUse(t *testing.T) {
-	sendParams := provider.SendParams{
+	sendParams := types.SendParams{
 		Tool: types.Tool{
 			Name:        "get_weather",
 			Description: "Get the current weather for a location",

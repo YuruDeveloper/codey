@@ -1,6 +1,9 @@
 package appError
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type ErrorType int 
 
@@ -21,6 +24,7 @@ const (
 	FailOpenBrowser
 	UnexpectedOS
 	FailUpdateToken
+	UnexpectedAuthIndex
 )
 
 var _ error = (*Error)(nil)
@@ -40,7 +44,7 @@ func NewError(errorType ErrorType ,err error) error{
 func NewValidError(errorType ErrorType,message string) error {
 	return &Error{
 		errorType: errorType,
-		err: fmt.Errorf(message),
+		err: errors.New(message),
 	}
 }
 
@@ -78,6 +82,8 @@ func (instance *Error) String() string {
 			return "UnexpectedOS"
 		case FailUpdateToken:
 			return "FailUpdateToken"
+		case UnexpectedAuthIndex:
+			return "UnexpectedAuthIndex"
 		default:
 			return "Unknown"
 	}

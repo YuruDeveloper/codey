@@ -3,8 +3,8 @@ package anthropic
 import (
 	"context"
 
-	"github.com/YuruDeveloper/codey/internal/provider"
 	"github.com/YuruDeveloper/codey/internal/types"
+
 	"github.com/anthropics/anthropic-sdk-go"
 )
 
@@ -25,7 +25,7 @@ const (
 	MessageEnd     = "message_delta"
 )
 
-func initStream(parms provider.SendParams) StreamInput {
+func initStream(parms types.SendParams) StreamInput {
 	maxTokens := parms.MaxTokens
 
 	if maxTokens == 0 {

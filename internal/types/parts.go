@@ -1,14 +1,5 @@
 package types
 
-type Role int
-
-const (
-	UserRole = Role(iota)
-	AssistantRole
-	ToolRole
-	AlarmRole
-)
-
 type PartType int
 
 const (
@@ -49,37 +40,3 @@ type ToolResultPart struct {
 }
 
 func (ToolResultPart) GetType() PartType { return PartTypeToolResult }
-
-type Message struct {
-	Role  Role
-	Parts []Part
-}
-
-type Tool struct {
-	Name        string
-	Description string
-	InputSchema map[string]any
-}
-
-type EventType int
-
-const (
-	EventTypeTextDelta = EventType(iota)
-	EventTypeToolUseStart
-	EventTypeToolUseInput
-	EventTypeToolUseEnd
-	EventTypeMessageEnd
-	EventTypeError
-)
-
-type StreamEvent struct {
-	Type EventType
-
-	Text string
-
-	ToolUseID string
-	ToolInput string
-
-	Error      error
-	StopReason string
-}

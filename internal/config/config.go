@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 
 	appError "github.com/YuruDeveloper/codey/internal/error"
+	"github.com/YuruDeveloper/codey/internal/ports"
 )
 
-var _ AppConfig = (*Config)(nil)
+var _ ports.AppConfig = (*Config)(nil)
 
 type Config struct {
 	Providers       map[string]json.RawMessage `json:"providers"`
