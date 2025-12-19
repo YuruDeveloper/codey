@@ -15,12 +15,14 @@ func roleAdapter(role types.Role) anthropic.MessageParamRole {
 		return anthropic.MessageParamRole("tool")
 	case types.AlarmRole:
 		return anthropic.MessageParamRole("alarm")
+	case types.MemoryRole:
+		return anthropic.MessageParamRole("memory")
 	default:
 		return anthropic.MessageParamRole("unknown")
 	}
 }
 
-func partsAdapter(parts []types.Part) []anthropic.ContentBlockParamUnion {
+func partsToAnthropicAdapter(parts []types.Part) []anthropic.ContentBlockParamUnion {
 	blocks := make([]anthropic.ContentBlockParamUnion, 0, len(parts))
 
 	for _, part := range parts {
@@ -40,6 +42,46 @@ func partsAdapter(parts []types.Part) []anthropic.ContentBlockParamUnion {
 		}
 	}
 	return blocks
+}
+
+func anthropicToParts(content []anthropic.ContentBlockUnion) []types.Part {
+	parts := make([]types.Part, 0, len(content))
+
+	for _, block := range content {
+		switch block.AsAny().(type) {
+			case anthropic.ThinkingBlock:
+				parts = append(parts, types.ThinkPart{
+					Thinking: block.Thinking,
+				})
+			case anthropic.TextBlock:
+				parts = append(parts, types.TextPart{
+					Text: block.Text,
+				})
+			case anthropic.ToolUseBlock:
+				parts = append(parts, types.ToolUsePart{
+					ID:    block.ID,
+					Input: block.Input,
+				})
+			case anthropic.RedactedThinkingBlock:
+				parts = append(parts, types.ThinkPart{
+					Thinking: block.Data,
+				})
+			case anthropic.ServerToolUseBlock:
+			case anthropic.WebSearchToolResultBlock:
+		}
+	}
+	return parts
+}
+
+func anthropicToMessageAdapter(message *anthropic.Message) types.Message {
+	if message == nil {
+		return types.Message{}
+	}
+
+	return types.Message{
+		Role:  types.AssistantRole,
+		Parts: anthropicToParts(message.Content),
+	}
 }
 
 func toolAdapter(tool types.Tool) []anthropic.ToolUnionParam {
@@ -70,7 +112,7 @@ func messageAdapter(messages []types.Message) []anthropic.MessageParam {
 	result := make([]anthropic.MessageParam, 0, len(messages))
 
 	for _, message := range messages {
-		blocks := partsAdapter(message.Parts)
+		blocks := partsToAnthropicAdapter(message.Parts)
 		result = append(result, anthropic.MessageParam{
 			Role:    roleAdapter(message.Role),
 			Content: blocks,

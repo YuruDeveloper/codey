@@ -30,7 +30,7 @@ func (AuthManager) LoadAuth(config ports.AppConfig) (ports.Auth, error) {
 		case OAuth:
 			return NewOAuthAuth(auth) , nil
 		default:
-			return nil , appError.NewValidError(0,"UnkownAuthType")
+			return nil , appError.NewValidError(0,"UnknownAuthType")
 	} 
 }
 

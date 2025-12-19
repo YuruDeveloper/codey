@@ -7,4 +7,5 @@ const (
 	AssistantRole
 	ToolRole
 	AlarmRole
+	MemoryRole
 )
