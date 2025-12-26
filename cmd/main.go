@@ -4,5 +4,4 @@ import (
 )
 
 func main() {
-
 }
