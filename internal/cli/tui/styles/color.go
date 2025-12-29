@@ -6,7 +6,7 @@ import (
 
 type Colors struct {
 	Text lipgloss.ANSIColor
-	TextDimmation lipgloss.ANSIColor
+	TextDim lipgloss.ANSIColor
 	TextMuted lipgloss.ANSIColor
 	
 	Border lipgloss.ANSIColor
@@ -24,7 +24,7 @@ type Colors struct {
 // Default  Colors Palette
 var DefaultColors Colors = Colors{
 	Text: lipgloss.ANSIColor(255),
-	TextDimmation: lipgloss.ANSIColor(245),
+	TextDim: lipgloss.ANSIColor(245),
 	TextMuted: lipgloss.ANSIColor(240),
 	Border: lipgloss.ANSIColor(8),
 

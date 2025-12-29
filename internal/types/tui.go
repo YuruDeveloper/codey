@@ -9,3 +9,17 @@ const (
 	TuiStateSelect
 	TuiStateModel
 )
+
+type ToolStatus int 
+
+const (
+	ToolPending ToolStatus = iota
+	ToolSuccess
+	ToolError
+	ToolDefault
+)
+
+type UpdateToolStatus struct{
+	Status ToolStatus 
+	Info string
+}
