@@ -5,6 +5,7 @@ import (
 
 	appError "github.com/YuruDeveloper/codey/internal/error"
 	"github.com/YuruDeveloper/codey/internal/ports"
+	"github.com/YuruDeveloper/codey/internal/types"
 )
 
 var _ ports.Auth = (*ApiKeyAuth)(nil)
@@ -23,8 +24,8 @@ func (instance *ApiKeyAuth) SetApiKey(key string) {
 	instance.key = key
 }
 
-func (instance *ApiKeyAuth) Key() string {
-	return instance.key
+func (instance *ApiKeyAuth) Key() (string , types.AuthType){
+	return instance.key , types.ApiKey
 }
 
 func (instance *ApiKeyAuth) Save(config ports.AppConfig) error {

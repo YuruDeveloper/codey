@@ -41,13 +41,19 @@ var DefaultModels = []ModelData{
     {Name: "opus4.5", Id: ModelOpusID},
 }
 
-func New(key ports.Auth) (*Anthropic, error) {
-	if dynamic , ok := key.(ports.DynamicAuth) ; ok {
+func New(auth ports.Auth) (*Anthropic, error) {
+	if dynamic , ok := auth.(ports.DynamicAuth) ; ok {
 		if err := dynamic.Update(context.Background()) ; err != nil {
           	return nil, appError.NewError(appError.FailUpdateToken, err)	
 		}
 	}
-	client := anthropic.NewClient(option.WithAPIKey(key.Key()))
+	key , authType := auth.Key()
+	var client anthropic.Client
+	if authType == types.OAuth {
+		client = anthropic.NewClient(option.WithAuthToken(key),option.WithHeader("anthropic-beta", "oauth-2025-04-20"))
+	} else {
+		client = anthropic.NewClient(option.WithAPIKey(key))
+	}
 	object := &Anthropic{
 		client: client,
 		model:  0,
@@ -56,13 +62,20 @@ func New(key ports.Auth) (*Anthropic, error) {
 	return object , nil
 }
 
-func (instance *Anthropic) Reconnect(key ports.Auth) error {
-	if dynamic , ok := key.(ports.DynamicAuth) ; ok {
+func (instance *Anthropic) Reconnect(auth ports.Auth) error {
+	if dynamic , ok := auth.(ports.DynamicAuth) ; ok {
 		if err := dynamic.Update(context.Background()) ; err != nil {
       		return appError.NewError(appError.FailUpdateToken, err)
 		}	
 	}
-	instance.client = anthropic.NewClient(option.WithAPIKey(key.Key()))	
+	key , authType := auth.Key()
+	var authOption option.RequestOption
+	if authType == types.OAuth {
+		instance.client = anthropic.NewClient(option.WithAuthToken(key),option.WithHeader("anthropic-beta", "oauth-2025-04-20"))
+	} else {
+		instance.client = anthropic.NewClient(option.WithAPIKey(key))
+	}
+	instance.client = anthropic.NewClient(authOption)
 	instance.getModelsData()
 	return nil
 }
@@ -117,6 +130,7 @@ func (instance *Anthropic) Send(ctx context.Context, params types.SendParams) (t
 	}
 
 	message , err := instance.client.Messages.New(ctx,anthropic.MessageNewParams{
+		Model: anthropic.Model(instance.datas[instance.model].Id),
 		Messages: messageAdapter(params.Messages),
 		Tools: toolAdapter(params.Tool),
 		MaxTokens: int64(maxTokens),

@@ -46,9 +46,9 @@ func (AuthManager) Authenticate(index int,authContext ports.AuthContext,ctx cont
 			err := auth.Save(authContext.GetConfig())
 			return auth , err
 		case 1:
-			pkce := Authorize(console,authContext.ShowMessage)
+			verifier := Authorize(Max,authContext.ShowMessage)
 			auth := &OAuthAuth{}
-			err := auth.ExchangeToken(context.Background(),authContext.GetUserInput("Code: "),pkce.Verifier)
+			err := auth.ExchangeToken(context.Background(),authContext.GetUserInput("Code: "),verifier)
 			if err != nil {
 				return nil , err
 			}

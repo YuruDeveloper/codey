@@ -1,15 +1,17 @@
 package anthropicAuth
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	appError "github.com/YuruDeveloper/codey/internal/error"
 	"github.com/YuruDeveloper/codey/internal/ports"
+	"github.com/YuruDeveloper/codey/internal/types"
 	"golang.org/x/oauth2"
 )
 
@@ -50,8 +52,8 @@ func NewOAuthAuth(auth AuthData) *OAuthAuth {
 	} 
 }
 
-func (instance *OAuthAuth) Key() string {
-	return instance.token.AccessToken
+func (instance *OAuthAuth) Key() (string , types.AuthType){
+	return instance.token.AccessToken , types.OAuth
 }
 
 func (instance *OAuthAuth) Update(ctx context.Context) error {
@@ -83,7 +85,7 @@ func (instance *OAuthAuth) Save(config ports.AppConfig) error{
 }
 
 
-func (instance *OAuthAuth) ExchangeToken(ctx context.Context, code string, verifier string) error {
+func (instance *OAuthAuth) ExchangeToken(ctx context.Context, code string,verifier string) error {
 	parts := strings.Split(code,"#")
 	if len(parts) != 2 {
 		return appError.NewValidError(appError.UnexpectedCode,"Fail Exchange anthropic token")
@@ -91,33 +93,36 @@ func (instance *OAuthAuth) ExchangeToken(ctx context.Context, code string, verif
 
 	codeValue := parts[0]
 	stateValue := parts[1]
-
-	payload := map[string]string {
-		"grant_type" : "authorization_code",
-		"code" : codeValue,
-		"state" : stateValue,
-		"client_id" : ClientID,
+	// Anthropic OAuth는 JSON 형식 사용 (OpenCode 참조)
+	payload := map[string]string{
+		"code":          codeValue,
+		"state":         stateValue,
+		"grant_type":    "authorization_code",
+		"client_id":     ClientID,
 		"redirect_uri":  "https://console.anthropic.com/oauth/code/callback",
 		"code_verifier": verifier,
 	}
 
 	payloadBytes, err := json.Marshal(payload)
-    if err != nil {
-        return appError.NewError(appError.JsonMarshalError,err)
-    }
+	if err != nil {
+		return appError.NewError(appError.JsonMarshalError, err)
+	}
 
-	request , err := http.NewRequestWithContext(
+	request, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
 		instance.oauth2Config.Endpoint.TokenURL,
-        bytes.NewReader(payloadBytes),
+		strings.NewReader(string(payloadBytes)),
 	)
 	if err != nil {
-		return appError.NewError(appError.FailMakeRequest,err)
+		return appError.NewError(appError.FailMakeRequest, err)
 	}
+
+	request.Header.Set("Content-Type", "application/json")
+
 	 client := http.DefaultClient
-	if c, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
-		client = c
+	if newClient, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
+		client = newClient
 	} 
 	response , err := client.Do(request)
 	if err != nil {
@@ -126,7 +131,8 @@ func (instance *OAuthAuth) ExchangeToken(ctx context.Context, code string, verif
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return appError.NewValidError(appError.HttpNotOK,"Fail http anthropic token")
+		body, _ := io.ReadAll(response.Body)
+		return appError.NewValidError(appError.HttpNotOK,fmt.Sprintf("Fail http anthropic token, status code: %s , body: %s",response.Status,string(body)))
 	}
 
 	var result struct {

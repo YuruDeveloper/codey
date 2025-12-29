@@ -1,9 +1,9 @@
 package anthropicAuth
 
 import (
-	"net/url"
-
 	"github.com/YuruDeveloper/codey/internal/browser"
+	"github.com/grokify/go-pkce"
+	"golang.org/x/oauth2"
 )
 
 type AuthMode int 
@@ -15,42 +15,40 @@ const (
 
 type ShowUrl func (url string)
 
-func AuthorizeURL(mode AuthMode) (string ,*PKCE){
-	pkce := GeneratePKCE()
-	if pkce == nil {
-		return "" , pkce
+func AuthorizeURL(mode AuthMode) (string, string){
+	verifier , err := pkce.NewCodeVerifier(-1)
+	if err != nil {
+		return "" , ""
 	}
 
 	baseURL := "https://console.anthropic.com"
 	if mode == Max {
 		baseURL = "https://claude.ai"
 	}
-
-	authURL, _ := url.Parse(baseURL + "/oauth/authorize")
-	query := authURL.Query()
-
-	query.Set("client_id", ClientID)
-	query.Set("response_type", "code")
-	query.Set("redirect_uri", "https://console.anthropic.com/oauth/code/callback")
-	query.Set("scope", "org:create_api_key user:profile user:inference")
-	query.Set("code_challenge", pkce.Challenge)
-	query.Set("code_challenge_method", "S256")
-	query.Set("state", pkce.Verifier)
-	query.Set("code", "true")
-	authURL.RawQuery = query.Encode()
-
-	return authURL.String(), pkce
+	config := &oauth2.Config {
+		ClientID: ClientID,
+		ClientSecret: "",
+		Endpoint: oauth2.Endpoint{
+			AuthURL: baseURL + "/oauth/authorize",
+			TokenURL: "https://console.anthropic.com/v1/oauth/token",
+		},
+		RedirectURL: "https://console.anthropic.com/oauth/code/callback",
+		Scopes: []string{
+          "org:create_api_key",
+          "user:profile",
+          "user:inference",
+      	},
+	}
+	url := config.AuthCodeURL(verifier,oauth2.S256ChallengeOption(verifier))
+	return url , verifier 
 }
 
-func Authorize(mode AuthMode,show ShowUrl) *PKCE {
-	authURL , PKCE := AuthorizeURL(mode)
-	if PKCE == nil {
-		return nil
-	}
+func Authorize(mode AuthMode,show ShowUrl)  string {
+	authURL , verifier := AuthorizeURL(mode)
 	if err := browser.Browser(authURL); err != nil {
 		show(authURL)
 	}
 
-	return  PKCE
+	return verifier
 }
 

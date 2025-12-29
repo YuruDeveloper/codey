@@ -1,9 +1,13 @@
 package ports
 
-import "context"
+import (
+	"context"
+
+	"github.com/YuruDeveloper/codey/internal/types"
+)
 
 type Auth interface {
-	Key() string
+	Key() (string , types.AuthType)
 	Save(config AppConfig) error
 }
 
