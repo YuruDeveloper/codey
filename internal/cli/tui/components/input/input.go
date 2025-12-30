@@ -2,6 +2,8 @@ package input
 
 import (
 	"github.com/YuruDeveloper/codey/internal/cli/tui/styles"
+	"github.com/YuruDeveloper/codey/internal/types"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -15,7 +17,9 @@ type Model struct {
 	focused bool
 }
 
-func New() Model {
+var SubmitKey key.Binding = key.NewBinding(key.WithKeys("enter"))
+
+func New() *Model {
 	textarea := textarea.New()
 	textarea.Placeholder = ""
 	textarea.ShowLineNumbers = false
@@ -29,7 +33,7 @@ func New() Model {
 		}
 		return "  "
 	})
-	return Model{
+	return &Model{
 		textArea: textarea,
 		maxHeight: 5,
 		focused: true,
@@ -41,12 +45,26 @@ func (instance *Model) Init() tea.Cmd {
 }
 
 func (instance *Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
+	var cmds []tea.Cmd
 	switch message := message.(type) {
 		case tea.WindowSizeMsg:
 			instance.width = message.Width
 			instance.textArea.SetWidth(message.Width -4)
+		case tea.KeyMsg:
+			if key.Matches(message,SubmitKey) {
+				cmd := func() tea.Msg {
+							return types.SubmitInput {
+								Text: instance.textArea.Value(),
+							}
+						}	 
+				cmds = append(cmds, cmd)
+			} else {
+				var cmd tea.Cmd
+				instance.textArea , cmd = instance.textArea.Update(message)
+				cmds = append(cmds, cmd)
+			}
+		case types.ResetCommand:
+			instance.textArea.Reset()
 	}
 
 	contentLen := instance.textArea.Length()
@@ -62,14 +80,9 @@ func (instance *Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		instance.textArea.SetHeight(height)
 	}
-	instance.textArea , cmd = instance.textArea.Update(message)
-	return instance, cmd
+	return instance, tea.Batch(cmds...)
 }
 
 func (instance *Model) View() string {
 	return instance.textArea.View()
-}
-
-func (instance *Model) Value() string {
-	return  instance.textArea.Value()
 }

@@ -8,26 +8,31 @@ import (
 	"github.com/charmbracelet/bubbles/cursor"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/google/uuid"
 )
 
 var _ tea.Model = (*Model)(nil)
 
 type Model struct {
 	cursor   cursor.Model
+	uuid uuid.UUID
 	toolName string
 	path     string
 	info     string
+	callBack func(uuid.UUID)
 	status types.ToolStatus
 }
 
-func New(toolName, path string) Model{
+func New(toolName, path string,UUID uuid.UUID,callBack func(uuid.UUID)) *Model{
 	cursor := cursor.New()
 	cursor.SetChar(styles.DefaultSymbols.Bullet)
 	cursor.Style = styles.DefaultComponents.ToolPending
-	return Model{
+	return &Model{
 		toolName: toolName,
 		path: path,
 		status: types.ToolPending,
+		callBack: callBack,
+		uuid: UUID,
 	}
 }
 
@@ -38,7 +43,11 @@ func (instance *Model) Init() tea.Cmd {
 
 func (instance *Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	instance.cursor, cmd = instance.cursor.Update(message)
 	if message , ok := message.(types.UpdateToolStatus) ; ok {
+		if message.UUID != instance.uuid {
+			return instance , cmd		
+		}
 		instance.status = message.Status
 		instance.info = message.Info
 		instance.cursor.SetMode(cursor.CursorStatic)
@@ -50,9 +59,12 @@ func (instance *Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				instance.cursor.Style = styles.DefaultComponents.ToolDefault
 		}
-		return instance , nil
+		str := instance.View()
+		instance.callBack(instance.uuid)
+		cmd = tea.Println(str)
+		return instance , cmd
 	}
-	instance.cursor, cmd = instance.cursor.Update(message)
+
 	return instance, cmd 
 }
 
